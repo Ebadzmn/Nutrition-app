@@ -1,0 +1,10 @@
+Analyzing settings_screen.dart...
+
+  error - settings_screen.dart:502:41 - Undefined name 'context'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - settings_screen.dart:1091:8 - '_CustomThumbShape.paint' ('void Function(PaintingContext, Offset, {required Animation<double> activationAnimation, required Animation<double> enableAnimation, required bool isDiscrete, required TextPainter labelPainter, required RenderBox parentBox, required Size sizeWithOverflow, required SliderThemeData sliderTheme, required TextDirection textDirection, required double textScaleFactor, required double value})') isn't a valid override of 'SliderComponentShape.paint' ('void Function(PaintingContext, Offset, {required Animation<double> activationAnimation, required Animation<double> enableAnimation, required bool isDiscrete, required TextPainter labelPainter, required RenderBox parentBox, required Size sizeWithOverflow, required SliderThemeData sliderTheme, required TextDirection textDirection, required double textScaleFactor, required double value})'). - invalid_override
+           - The member being overridden at ../../../../development/flutter/packages/flutter/lib/src/material/slider_value_indicator_shape.dart:107:8.
+   info - settings_screen.dart:573:47 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - settings_screen.dart:891:19 - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - settings_screen.dart:1031:18 - Unnecessary use of 'toList' in a spread. Try removing the invocation of 'toList'. - unnecessary_to_list_in_spreads
+
+5 issues found.
