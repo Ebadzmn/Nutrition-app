@@ -47,37 +47,76 @@ class HomeController extends GetxController {
 
   void _showMedicalDisclaimer() {
     final isDark = Get.isDarkMode;
-    Get.defaultDialog(
-      title: 'Medical Disclaimer',
-      titleStyle: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: isDark ? Colors.white : const Color(0xFF3A2E28),
-      ),
-      content: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-        child: Text(
-          'The HerWellness app provides fitness and nutrition information for educational purposes only.\n\nIt is not intended to be a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.',
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.5,
-            color: isDark ? Colors.white70 : const Color(0xFF3A2E28).withOpacity(0.8),
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        elevation: 10,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFFE8927C).withOpacity(0.2) : const Color(0xFFFFF0EC),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.health_and_safety_rounded,
+                  size: 40,
+                  color: Color(0xFFE8927C),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Medical Disclaimer',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF3A2E28),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'The HerWellness app provides fitness and nutrition information for educational purposes only.\n\nIt is not intended to be a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.6,
+                  color: isDark ? Colors.white70 : const Color(0xFF3A2E28).withOpacity(0.8),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE8927C),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'I Understand',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          textAlign: TextAlign.center,
         ),
       ),
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       barrierDismissible: false,
-      confirm: TextButton(
-        onPressed: () => Get.back(),
-        child: const Text(
-          'I Understand',
-          style: TextStyle(
-            color: Color(0xFFE8927C),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
     );
   }
 

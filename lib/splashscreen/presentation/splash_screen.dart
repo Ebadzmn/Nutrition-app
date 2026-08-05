@@ -27,13 +27,15 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1500),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
     _checkAuthState();
@@ -41,18 +43,19 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkAuthState() async {
     await Future.delayed(const Duration(seconds: 3));
-    
+
     final prefs = await SharedPreferences.getInstance();
-    final hasCompletedOnboarding = prefs.getBool('hasCompletedOnboarding') ?? false;
+    final hasCompletedOnboarding =
+        prefs.getBool('hasCompletedOnboarding') ?? false;
     final accessToken = prefs.getString('access_token');
-    
+
     if (accessToken == null || accessToken.isEmpty) {
       Get.offAllNamed(AppRoute.login);
     } else {
       // Set token and verify it via /auth/me
       final apiClient = Get.find<ApiClient>();
       apiClient.setToken(accessToken);
-      
+
       final response = await apiClient.get('/auth/me');
       if (response.isSuccess) {
         // Sync Firebase Cloud Messaging token with the backend
@@ -64,7 +67,9 @@ class _SplashScreenState extends State<SplashScreen>
         if (!hasCompletedOnboarding) {
           try {
             final cycleResponse = await apiClient.get('/cycle/cycle-data');
-            if (cycleResponse.isSuccess && cycleResponse.data is List && (cycleResponse.data as List).isNotEmpty) {
+            if (cycleResponse.isSuccess &&
+                cycleResponse.data is List &&
+                (cycleResponse.data as List).isNotEmpty) {
               userHasCycleData = true;
               await prefs.setBool('hasCompletedOnboarding', true);
             }
@@ -107,8 +112,8 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.network(
-                  'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69934eac0b26e505ebf4ef11/6dd51d48c_TransparentLogo.png',
+                Image.asset(
+                  'assets/images/hlogot.png',
                   height: 120,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
@@ -131,9 +136,10 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Your wellness companion',
+                  'Optimise your performance to feel your best all month round',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
                 ),

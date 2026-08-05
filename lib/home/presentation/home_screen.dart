@@ -109,6 +109,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const TipsSectionWidget(),
+                    const SizedBox(height: 120),
                   ],
                 ),
               ),

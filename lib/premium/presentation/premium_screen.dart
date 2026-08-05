@@ -260,8 +260,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
   @override
   Widget build(BuildContext context) {
     // Attempt to read prices from queried App Store product data, fallback to defaults
-    String monthlyPrice = '\$9.99/month';
-    String annualPrice = '\$59.99/year';
+    String monthlyPrice = '£11.99/month';
+    String annualPrice = '£115.99/year';
     
     for (var prod in _products) {
       if (prod.id == 'com.herwellnessapp.monthly') {
@@ -355,7 +355,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   duration: '1 Year',
                   price: annualPrice,
                   subtitle: '7-Day Free Trial included · Renews yearly',
-                  badge: 'BEST VALUE - SAVE 50%',
+                  badge: 'BEST VALUE - SAVE 19%',
                   highlighted: true,
                 ),
                 const SizedBox(height: 28),
@@ -565,12 +565,14 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),

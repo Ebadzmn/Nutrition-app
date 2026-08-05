@@ -7,6 +7,7 @@ import '../../core/services/notification_service.dart';
 import '../models/login_response_model.dart';
 import '../models/user_model.dart';
 import 'dart:convert';
+import '../../home/controller/home_controller.dart';
 
 class AuthController extends GetxController {
   final isLoading = false.obs;
@@ -402,6 +403,7 @@ class AuthController extends GetxController {
       currentUser.value = null;
       // Clear onboarding flag so a different user on the same device goes through onboarding
       await prefs.remove('hasCompletedOnboarding');
+      HomeController.hasShownAppDisclaimer = false;
 
       final ApiClient apiClient = Get.find<ApiClient>();
       apiClient.clearToken();
@@ -428,6 +430,7 @@ class AuthController extends GetxController {
         await prefs.remove('access_token');
         await prefs.remove('refresh_token');
         await prefs.remove('user_data');
+        HomeController.hasShownAppDisclaimer = false;
         apiClient.clearToken();
 
         Get.snackbar(
