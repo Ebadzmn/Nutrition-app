@@ -729,183 +729,272 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildSubscriptionCard(bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-              gradient: LinearGradient(
-                colors: [Color(0xFFE8927C), Color(0xFFA687C6)],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-            ),
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Premium Cycle Insights',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+    final authController = Get.find<AuthController>();
+    return Obx(() {
+      final user = authController.currentUser.value;
+      final bool hasSubscription = user?.hasPremiumAccess == true ||
+          (user?.subscription != null &&
+              (user?.subscription?['status'] == 'active' ||
+                  user?.subscription?['plan'] != null));
+
+      String activePlanName = 'Premium Member';
+      if (user?.subscription != null) {
+        final plan = user?.subscription?['plan']?.toString().toLowerCase() ?? '';
+        final productId = user?.subscription?['productId']?.toString().toLowerCase() ?? '';
+        if (plan.contains('annual') || productId.contains('annual')) {
+          activePlanName = 'Annual Premium Plan';
+        } else if (plan.contains('monthly') || productId.contains('monthly')) {
+          activePlanName = 'Monthly Premium Plan';
+        } else if (plan.isNotEmpty) {
+          activePlanName = '${plan.capitalizeFirst} Plan';
+        }
+      }
+
+      return Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
-                const SizedBox(height: 4),
-              ],
-            ),
-          ),
-          // Features
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildPremiumFeature('Advanced hormone trend charts', isDark),
-                const SizedBox(height: 12),
-                _buildPremiumFeature('Phase-optimised workout plans', isDark),
-                const SizedBox(height: 12),
-                _buildPremiumFeature('AI nutrition guidance', isDark),
-                const SizedBox(height: 12),
-                _buildPremiumFeature('Symptom pattern insights', isDark),
-              ],
-            ),
-          ),
-          // Selectable Pricing Cards
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Obx(
-              () => Row(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFE8927C), Color(0xFFA687C6)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+              ),
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _buildPricingCard(
-                      planKey: 'annual',
-                      title: 'Annual',
-                      price: '£115.99',
-                      suffix: '/year',
-                      subtitle: '≈ £9.67/month · Save 19%',
-                      isBestValue: true,
-                      isDark: isDark,
-                      isSelected: controller.selectedPlan.value == 'annual',
-                      onTap: () => controller.selectedPlan.value = 'annual',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildPricingCard(
-                      planKey: 'monthly',
-                      title: 'Monthly',
-                      price: '£11.99',
-                      suffix: '/month',
-                      subtitle: '',
-                      isBestValue: false,
-                      isDark: isDark,
-                      isSelected: controller.selectedPlan.value == 'monthly',
-                      onTap: () => controller.selectedPlan.value = 'monthly',
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasSubscription ? 'Active Subscription' : 'Premium Cycle Insights',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          // CTA Button — navigates to PremiumScreen with selected plan
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GestureDetector(
-              onTap: () {
-                final premiumController = Get.find<PremiumController>();
-                final productId = controller.selectedPlan.value == 'annual'
-                    ? 'com.herwellnessapp.annual'
-                    : 'com.herwellnessapp.monthly';
-                premiumController.buyProduct(productId);
-              },
-              child: Obx(() {
-                final premiumController = Get.find<PremiumController>();
-                final isPurchasing = premiumController.purchasing.value;
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFE8927C), Color(0xFFA687C6)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: isPurchasing
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Subscribe Now',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
+
+            if (hasSubscription) ...[
+              // Active subscription display
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF2C2C2C) : AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFE8927C).withOpacity(0.5),
                         ),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'Payment will be charged to your Apple ID account at the confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions by going to your account settings on the App Store after purchase.',
-              style: TextStyle(
-                fontSize: 10,
-                color: isDark ? Colors.white54 : const Color(0xFF8B7355),
-                height: 1.3,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [Color(0xFFE8927C), Color(0xFFA687C6)],
+                              ),
+                            ),
+                            child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  activePlanName,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Status: Active · All Features Unlocked',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.white70 : AppColors.accentGreen,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildPremiumFeature('Advanced hormone trend charts', isDark),
+                    const SizedBox(height: 10),
+                    _buildPremiumFeature('Phase-optimised workout plans', isDark),
+                    const SizedBox(height: 10),
+                    _buildPremiumFeature('AI nutrition guidance', isDark),
+                    const SizedBox(height: 10),
+                    _buildPremiumFeature('Symptom pattern insights', isDark),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () {
-              final premiumController = Get.find<PremiumController>();
-              premiumController.restorePurchases();
-            },
-            style: TextButton.styleFrom(
-              minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              'Restore Purchases',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.white70 : const Color(0xFF3A2E28),
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
+            ] else ...[
+              // Features
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildPremiumFeature('Advanced hormone trend charts', isDark),
+                    const SizedBox(height: 12),
+                    _buildPremiumFeature('Phase-optimised workout plans', isDark),
+                    const SizedBox(height: 12),
+                    _buildPremiumFeature('AI nutrition guidance', isDark),
+                    const SizedBox(height: 12),
+                    _buildPremiumFeature('Symptom pattern insights', isDark),
+                  ],
+                ),
+              ),
+              // Selectable Pricing Cards
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Obx(
+                  () => Row(
+                    children: [
+                      Expanded(
+                        child: _buildPricingCard(
+                          planKey: 'annual',
+                          title: 'Annual',
+                          price: '£115.99',
+                          suffix: '/year',
+                          subtitle: '≈ £9.67/month · Save 19%',
+                          isBestValue: true,
+                          isDark: isDark,
+                          isSelected: controller.selectedPlan.value == 'annual',
+                          onTap: () => controller.selectedPlan.value = 'annual',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildPricingCard(
+                          planKey: 'monthly',
+                          title: 'Monthly',
+                          price: '£11.99',
+                          suffix: '/month',
+                          subtitle: '',
+                          isBestValue: false,
+                          isDark: isDark,
+                          isSelected: controller.selectedPlan.value == 'monthly',
+                          onTap: () => controller.selectedPlan.value = 'monthly',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // CTA Button — navigates to PremiumScreen with selected plan
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GestureDetector(
+                  onTap: () {
+                    final premiumController = Get.find<PremiumController>();
+                    final productId = controller.selectedPlan.value == 'annual'
+                        ? 'com.herwellnessapp.annual'
+                        : 'com.herwellnessapp.monthly';
+                    premiumController.buyProduct(productId);
+                  },
+                  child: Obx(() {
+                    final premiumController = Get.find<PremiumController>();
+                    final isPurchasing = premiumController.purchasing.value;
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE8927C), Color(0xFFA687C6)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: isPurchasing
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Subscribe Now',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Payment will be charged to your Apple ID account at the confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions by going to your account settings on the App Store after purchase.',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDark ? Colors.white54 : const Color(0xFF8B7355),
+                    height: 1.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                final premiumController = Get.find<PremiumController>();
+                premiumController.restorePurchases();
+              },
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Restore Purchases',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.white70 : const Color(0xFF3A2E28),
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -965,6 +1054,7 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
+    });
   }
 
   Widget _buildPremiumFeature(String text, bool isDark) {

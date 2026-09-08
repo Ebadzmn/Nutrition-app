@@ -7,6 +7,7 @@ import '../../core/app_colors.dart';
 import '../../core/app_route.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../core/network/api_client.dart';
+import '../widgets/subscription_success_dialog.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -118,13 +119,6 @@ class _PremiumScreenState extends State<PremiumScreen> {
           }
 
           if (success) {
-            Get.snackbar(
-              'Success!',
-              'Your premium subscription is active.',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green.withAlpha(230),
-              colorText: Colors.white,
-            );
             if (purchaseDetails.pendingCompletePurchase) {
               await _inAppPurchase.completePurchase(purchaseDetails);
             }
@@ -133,6 +127,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
             if (mounted) {
               Get.back();
             }
+            final planName = purchaseDetails.productID.contains('annual')
+                ? 'Annual Plan'
+                : 'Monthly Plan';
+            SubscriptionSuccessDialog.show(planName: planName);
           } else {
             Get.snackbar(
               'Verification Failed',
@@ -166,7 +164,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
         final response = await apiClient.post(
           '/integration/iap/verify-google',
           data: {
-            'packageName': 'com.herwellnessapp',
+            'packageName': 'com.herwellness.herwellness_flutter',
             'productId': purchase.productID,
             'token': token,
           },

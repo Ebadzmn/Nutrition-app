@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import '../../core/network/api_client.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../widgets/subscription_success_dialog.dart';
 
 class PremiumController extends GetxController {
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
@@ -76,18 +77,16 @@ class PremiumController extends GetxController {
           purchasing.value = false;
 
           if (success) {
-            Get.snackbar(
-              'Success!',
-              'Your premium subscription is active.',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green.withAlpha(230),
-              colorText: Colors.white,
-            );
             if (purchaseDetails.pendingCompletePurchase) {
               await _inAppPurchase.completePurchase(purchaseDetails);
             }
             final authController = Get.find<AuthController>();
             await authController.refreshCurrentUser();
+
+            final planName = purchaseDetails.productID.contains('annual')
+                ? 'Annual Plan'
+                : 'Monthly Plan';
+            SubscriptionSuccessDialog.show(planName: planName);
           } else {
             Get.snackbar(
               'Verification Failed',
@@ -120,7 +119,7 @@ class PremiumController extends GetxController {
         final response = await apiClient.post(
           '/integration/iap/verify-google',
           data: {
-            'packageName': 'com.herwellnessapp',
+            'packageName': 'com.herwellness.herwellness_flutter',
             'productId': purchase.productID,
             'token': token,
           },
