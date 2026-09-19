@@ -104,8 +104,8 @@ class PremiumController extends GetxController {
                 trialExpiresAt: currentUser.trialExpiresAt,
                 subscription: {
                   'id': 'local_${now.millisecondsSinceEpoch}',
-                  'type': isAnnual ? 'annual' : 'monthly',
-                  'plan': isAnnual ? 'annual' : 'monthly',
+                  'type': isAnnual ? 'yearly' : 'monthly',
+                  'plan': isAnnual ? 'yearly' : 'monthly',
                   'status': 'active',
                   'isActive': true,
                   'productId': purchaseDetails.productID,
