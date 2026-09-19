@@ -9,6 +9,7 @@ import '../../auth/controller/auth_controller.dart';
 import '../../home/widgets/cycle_references_widget.dart';
 import '../../premium/controller/premium_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 class SettingsScreen extends StatelessWidget {
   SettingsScreen({super.key});
 
@@ -732,21 +733,74 @@ class SettingsScreen extends StatelessWidget {
     final authController = Get.find<AuthController>();
     return Obx(() {
       final user = authController.currentUser.value;
-      final bool hasSubscription = user?.hasPremiumAccess == true ||
-          (user?.subscription != null &&
-              (user?.subscription?['status'] == 'active' ||
-                  user?.subscription?['plan'] != null));
 
-      String activePlanName = 'Premium Member';
-      if (user?.subscription != null) {
-        final plan = user?.subscription?['plan']?.toString().toLowerCase() ?? '';
-        final productId = user?.subscription?['productId']?.toString().toLowerCase() ?? '';
-        if (plan.contains('annual') || productId.contains('annual')) {
+      final sub = user?.subscription;
+      final bool hasPaidSubscription = user?.isPaidSubscriptionActive ?? false;
+      final bool isTrial = user?.isTrialStrictlyActive ?? false;
+
+      // Extract plan type/name (checking type, plan, productId)
+      final type = sub?['type']?.toString().toLowerCase() ?? '';
+      final plan = sub?['plan']?.toString().toLowerCase() ?? '';
+      final productId = sub?['productId']?.toString().toLowerCase() ?? '';
+      
+      final planIdentifier = type.isNotEmpty ? type : (plan.isNotEmpty ? plan : productId);
+
+      String activePlanName = 'Premium Subscription';
+      String statusSubtitle = 'Status: Active · All Features Unlocked';
+      String? durationText;
+      String? expirationDateFormatted;
+
+      // Extract expiration/renewal date (checking endDate, expiresAt, etc.)
+      final rawExpiresAt =
+          sub?['endDate'] ??
+          sub?['expiresAt'] ??
+          sub?['currentPeriodEnd'] ??
+          sub?['expiryDate'] ??
+          sub?['expirationDate'] ??
+          user?.trialExpiresAt;
+
+      if (rawExpiresAt != null && rawExpiresAt.toString().isNotEmpty) {
+        try {
+          final dt = DateTime.parse(rawExpiresAt.toString());
+          expirationDateFormatted = DateFormat('dd MMM yyyy').format(dt);
+        } catch (_) {}
+      }
+
+      if (hasPaidSubscription) {
+        if (planIdentifier.contains('annual') || planIdentifier.contains('year')) {
           activePlanName = 'Annual Premium Plan';
-        } else if (plan.contains('monthly') || productId.contains('monthly')) {
+          durationText = '1 Year Access (Auto-Renewing)';
+        } else if (planIdentifier.contains('monthly') || planIdentifier.contains('month')) {
           activePlanName = 'Monthly Premium Plan';
-        } else if (plan.isNotEmpty) {
-          activePlanName = '${plan.capitalizeFirst} Plan';
+          durationText = '1 Month Access (Auto-Renewing)';
+        } else if (planIdentifier.isNotEmpty) {
+          activePlanName = '${planIdentifier.capitalizeFirst} Plan';
+          durationText = 'Premium Subscription';
+        }
+
+        if (expirationDateFormatted != null) {
+          statusSubtitle = 'Renews on: $expirationDateFormatted';
+        } else {
+          statusSubtitle = 'Status: Active Subscription · Auto-Renewing';
+        }
+      } else if (isTrial) {
+        activePlanName = '7-Day Free Trial';
+        durationText = '7 Days Free Trial Access';
+        if (user?.trialExpiresAt != null && user!.trialExpiresAt!.isNotEmpty) {
+          try {
+            final expires = DateTime.parse(user.trialExpiresAt!);
+            final daysLeft = expires.difference(DateTime.now()).inDays;
+            if (daysLeft > 0) {
+              statusSubtitle =
+                  'Trial Active · $daysLeft days remaining (Ends: $expirationDateFormatted)';
+            } else {
+              statusSubtitle = 'Trial Active · Ends today';
+            }
+          } catch (_) {
+            statusSubtitle = 'Trial Active · Premium Unlocked';
+          }
+        } else {
+          statusSubtitle = 'Trial Active · Premium Unlocked';
         }
       }
 
@@ -777,10 +831,18 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
+                      const Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        hasSubscription ? 'Active Subscription' : 'Premium Cycle Insights',
+                        hasPaidSubscription
+                            ? 'Active Subscription'
+                            : (isTrial
+                                  ? 'Free Trial Active'
+                                  : 'Premium Cycle Insights'),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -793,8 +855,8 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
 
-            if (hasSubscription) ...[
-              // Active subscription display
+            if (hasPaidSubscription) ...[
+              // Active paid subscription display (Purchased plan card)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -802,44 +864,98 @@ class SettingsScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2C2C2C) : AppColors.primaryLight,
+                        color: isDark
+                            ? const Color(0xFF2C2C2C)
+                            : AppColors.primaryLight,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: const Color(0xFFE8927C).withOpacity(0.5),
                         ),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFFE8927C), Color(0xFFA687C6)],
-                              ),
-                            ),
-                            child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  activePlanName,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : AppColors.textPrimary,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFFE8927C),
+                                      Color(0xFFA687C6),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Status: Active · All Features Unlocked',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark ? Colors.white70 : AppColors.accentGreen,
-                                    fontWeight: FontWeight.w600,
+                                child: const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      activePlanName,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    if (durationText != null) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        durationText,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFFE8927C),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.black26 : Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 14,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : AppColors.accentGreen,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    statusSubtitle,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : AppColors.accentGreen,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -849,9 +965,15 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _buildPremiumFeature('Advanced hormone trend charts', isDark),
+                    _buildPremiumFeature(
+                      'Advanced hormone trend charts',
+                      isDark,
+                    ),
                     const SizedBox(height: 10),
-                    _buildPremiumFeature('Phase-optimised workout plans', isDark),
+                    _buildPremiumFeature(
+                      'Phase-optimised workout plans',
+                      isDark,
+                    ),
                     const SizedBox(height: 10),
                     _buildPremiumFeature('AI nutrition guidance', isDark),
                     const SizedBox(height: 10),
@@ -860,14 +982,85 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
             ] else ...[
-              // Features
+              // Free trial banner or standard features list
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _buildPremiumFeature('Advanced hormone trend charts', isDark),
+                    if (isTrial) ...[
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF2C2C2C)
+                              : const Color(0xFFFFF4E5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFE8927C).withOpacity(0.6),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFFE8927C),
+                                    Color(0xFFA687C6),
+                                  ],
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.stars_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    activePlanName,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    statusSubtitle,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? Colors.orangeAccent
+                                          : const Color(0xFFD97706),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    _buildPremiumFeature(
+                      'Advanced hormone trend charts 15',
+                      isDark,
+                    ),
                     const SizedBox(height: 12),
-                    _buildPremiumFeature('Phase-optimised workout plans', isDark),
+                    _buildPremiumFeature(
+                      'Phase-optimised workout plans',
+                      isDark,
+                    ),
                     const SizedBox(height: 12),
                     _buildPremiumFeature('AI nutrition guidance', isDark),
                     const SizedBox(height: 12),
@@ -904,8 +1097,10 @@ class SettingsScreen extends StatelessWidget {
                           subtitle: '',
                           isBestValue: false,
                           isDark: isDark,
-                          isSelected: controller.selectedPlan.value == 'monthly',
-                          onTap: () => controller.selectedPlan.value = 'monthly',
+                          isSelected:
+                              controller.selectedPlan.value == 'monthly',
+                          onTap: () =>
+                              controller.selectedPlan.value = 'monthly',
                         ),
                       ),
                     ],
@@ -995,65 +1190,69 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton(
-                onPressed: () async {
-                  final url = Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url);
-                  }
-                },
-                style: TextButton.styleFrom(
-                  minimumSize: Size.zero,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: () async {
+                    final url = Uri.parse(
+                      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url);
+                    }
+                  },
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Terms of Use',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? Colors.white54 : const Color(0xFF8B7355),
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  'Terms of Use',
+                Text(
+                  ' | ',
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? Colors.white54 : const Color(0xFF8B7355),
-                    decoration: TextDecoration.underline,
                   ),
                 ),
-              ),
-              Text(
-                ' | ',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isDark ? Colors.white54 : const Color(0xFF8B7355),
-                ),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final url = Uri.parse('https://sites.google.com/view/herwallness/home');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url);
-                  }
-                },
-                style: TextButton.styleFrom(
-                  minimumSize: Size.zero,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  'Privacy Policy',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDark ? Colors.white54 : const Color(0xFF8B7355),
-                    decoration: TextDecoration.underline,
+                TextButton(
+                  onPressed: () async {
+                    final url = Uri.parse(
+                      'https://sites.google.com/view/herwallness/home',
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url);
+                    }
+                  },
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Privacy Policy',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? Colors.white54 : const Color(0xFF8B7355),
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      );
     });
   }
 
@@ -1254,13 +1453,18 @@ class SettingsScreen extends StatelessWidget {
                   color: isDark ? Colors.white : const Color(0xFF3A2E28),
                 ),
                 content: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0,
+                    vertical: 8.0,
+                  ),
                   child: Text(
                     'The HerWellness app provides fitness and nutrition information for educational purposes only.\n\nIt is not intended to be a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.',
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.5,
-                      color: isDark ? Colors.white70 : const Color(0xFF3A2E28).withOpacity(0.8),
+                      color: isDark
+                          ? Colors.white70
+                          : const Color(0xFF3A2E28).withOpacity(0.8),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -1293,7 +1497,9 @@ class SettingsScreen extends StatelessWidget {
             title: 'Privacy Policy',
             isDark: isDark,
             onTap: () async {
-              final Uri url = Uri.parse('https://sites.google.com/view/herwallness/home');
+              final Uri url = Uri.parse(
+                'https://sites.google.com/view/herwallness/home',
+              );
               if (await canLaunchUrl(url)) {
                 await launchUrl(url, mode: LaunchMode.externalApplication);
               }
@@ -1313,7 +1519,9 @@ class SettingsScreen extends StatelessWidget {
             title: 'Terms of Use (EULA)',
             isDark: isDark,
             onTap: () async {
-              final Uri url = Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+              final Uri url = Uri.parse(
+                'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+              );
               if (await canLaunchUrl(url)) {
                 await launchUrl(url, mode: LaunchMode.externalApplication);
               }
@@ -1340,51 +1548,57 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : const Color(0xFF3A2E28),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : const Color(0xFF3A2E28),
+                ),
               ),
             ),
-          ),
-          if (isToggle)
-            Obx(
-              () => Switch(
-                value: isNotificationToggle
-                    ? controller.notificationsEnabled.value
-                    : controller.isDarkMode.value,
-                onChanged: (val) {
-                  if (isNotificationToggle) {
-                    controller.toggleNotifications(val);
-                  } else {
-                    controller.isDarkMode.value = val;
-                    Get.changeThemeMode(val ? ThemeMode.dark : ThemeMode.light);
-                  }
-                },
-                activeThumbColor: const Color(0xFFE8927C),
-                inactiveThumbColor: Colors.white,
-                inactiveTrackColor: const Color(0xFFE2D6C8),
+            if (isToggle)
+              Obx(
+                () => Switch(
+                  value: isNotificationToggle
+                      ? controller.notificationsEnabled.value
+                      : controller.isDarkMode.value,
+                  onChanged: (val) {
+                    if (isNotificationToggle) {
+                      controller.toggleNotifications(val);
+                    } else {
+                      controller.isDarkMode.value = val;
+                      Get.changeThemeMode(
+                        val ? ThemeMode.dark : ThemeMode.light,
+                      );
+                    }
+                  },
+                  activeThumbColor: const Color(0xFFE8927C),
+                  inactiveThumbColor: Colors.white,
+                  inactiveTrackColor: const Color(0xFFE2D6C8),
+                ),
+              )
+            else
+              const Icon(
+                Icons.chevron_right,
+                color: Color(0xFFC4B8AD),
+                size: 20,
               ),
-            )
-          else
-            const Icon(Icons.chevron_right, color: Color(0xFFC4B8AD), size: 20),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildSignOutButton(bool isDark) {
     return InkWell(

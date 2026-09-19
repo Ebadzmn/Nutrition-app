@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../auth/models/user_model.dart';
 import '../widgets/subscription_success_dialog.dart';
 
 class PremiumController extends GetxController {
@@ -81,11 +84,42 @@ class PremiumController extends GetxController {
               await _inAppPurchase.completePurchase(purchaseDetails);
             }
             final authController = Get.find<AuthController>();
-            await authController.refreshCurrentUser();
+            
+            // Immediately apply active subscription locally to ensure UI updates instantly
+            final isAnnual = purchaseDetails.productID.contains('annual');
+            final planName = isAnnual ? 'Annual Premium Plan' : 'Monthly Premium Plan';
+            final now = DateTime.now();
+            final expiresAt = isAnnual ? now.add(const Duration(days: 365)) : now.add(const Duration(days: 30));
 
-            final planName = purchaseDetails.productID.contains('annual')
-                ? 'Annual Plan'
-                : 'Monthly Plan';
+            final currentUser = authController.currentUser.value;
+            if (currentUser != null) {
+              final updatedUser = UserModel(
+                id: currentUser.id,
+                email: currentUser.email,
+                username: currentUser.username,
+                name: currentUser.name,
+                role: currentUser.role,
+                isTrialActive: false,
+                hasPremiumAccess: true,
+                trialExpiresAt: currentUser.trialExpiresAt,
+                subscription: {
+                  'id': 'local_${now.millisecondsSinceEpoch}',
+                  'type': isAnnual ? 'annual' : 'monthly',
+                  'plan': isAnnual ? 'annual' : 'monthly',
+                  'status': 'active',
+                  'isActive': true,
+                  'productId': purchaseDetails.productID,
+                  'startDate': now.toIso8601String(),
+                  'endDate': expiresAt.toIso8601String(),
+                  'expiresAt': expiresAt.toIso8601String(),
+                },
+              );
+              authController.currentUser.value = updatedUser;
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('user_data', jsonEncode(updatedUser.toJson()));
+            }
+
+            await authController.refreshCurrentUser();
             SubscriptionSuccessDialog.show(planName: planName);
           } else {
             Get.snackbar(
@@ -105,7 +139,7 @@ class PremiumController extends GetxController {
     try {
       final ApiClient apiClient = Get.find<ApiClient>();
       
-      final isIOS = Get.context != null && Theme.of(Get.context!).platform == TargetPlatform.iOS;
+      final isIOS = GetPlatform.isIOS;
       
       if (isIOS) {
         final receipt = purchase.verificationData.localVerificationData;

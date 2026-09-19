@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_route.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../auth/models/user_model.dart';
 import '../../core/network/api_client.dart';
 import '../widgets/subscription_success_dialog.dart';
 
@@ -123,13 +126,45 @@ class _PremiumScreenState extends State<PremiumScreen> {
               await _inAppPurchase.completePurchase(purchaseDetails);
             }
             final authController = Get.find<AuthController>();
+            
+            // Immediately apply active subscription locally to ensure UI updates instantly
+            final isAnnual = purchaseDetails.productID.contains('annual');
+            final planName = isAnnual ? 'Annual Premium Plan' : 'Monthly Premium Plan';
+            final now = DateTime.now();
+            final expiresAt = isAnnual ? now.add(const Duration(days: 365)) : now.add(const Duration(days: 30));
+
+            final currentUser = authController.currentUser.value;
+            if (currentUser != null) {
+              final updatedUser = UserModel(
+                id: currentUser.id,
+                email: currentUser.email,
+                username: currentUser.username,
+                name: currentUser.name,
+                role: currentUser.role,
+                isTrialActive: false,
+                hasPremiumAccess: true,
+                trialExpiresAt: currentUser.trialExpiresAt,
+                subscription: {
+                  'id': 'local_${now.millisecondsSinceEpoch}',
+                  'type': isAnnual ? 'annual' : 'monthly',
+                  'plan': isAnnual ? 'annual' : 'monthly',
+                  'status': 'active',
+                  'isActive': true,
+                  'productId': purchaseDetails.productID,
+                  'startDate': now.toIso8601String(),
+                  'endDate': expiresAt.toIso8601String(),
+                  'expiresAt': expiresAt.toIso8601String(),
+                },
+              );
+              authController.currentUser.value = updatedUser;
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('user_data', jsonEncode(updatedUser.toJson()));
+            }
+
             await authController.refreshCurrentUser();
             if (mounted) {
               Get.back();
             }
-            final planName = purchaseDetails.productID.contains('annual')
-                ? 'Annual Plan'
-                : 'Monthly Plan';
             SubscriptionSuccessDialog.show(planName: planName);
           } else {
             Get.snackbar(
