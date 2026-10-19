@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
 import '../../auth/controller/auth_controller.dart';
@@ -186,7 +189,29 @@ class PremiumController extends GetxController {
       return;
     }
 
-    final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
+    PurchaseParam purchaseParam;
+
+    if (!kIsWeb && Platform.isAndroid && product is GooglePlayProductDetails) {
+      final offers = product.productDetails.subscriptionOfferDetails;
+      String? selectedOfferToken;
+
+      if (offers != null && offers.isNotEmpty) {
+        final matchingOffer = offers.firstWhereOrNull(
+          (offer) =>
+              offer.offerId == 'annual-discount-50' ||
+              offer.offerTags.contains('annual50'),
+        );
+        selectedOfferToken = matchingOffer?.offerIdToken ?? product.offerToken ?? offers.first.offerIdToken;
+      }
+
+      purchaseParam = GooglePlayPurchaseParam(
+        productDetails: product,
+        offerToken: selectedOfferToken,
+      );
+    } else {
+      purchaseParam = PurchaseParam(productDetails: product);
+    }
+
     try {
       await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (e) {

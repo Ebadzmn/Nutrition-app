@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
@@ -232,7 +235,32 @@ class _PremiumScreenState extends State<PremiumScreen> {
       return;
     }
 
-    final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
+    PurchaseParam purchaseParam;
+
+    if (!kIsWeb && Platform.isAndroid && product is GooglePlayProductDetails) {
+      // Best Practice: Check if discounted subscription offer ('annual-discount-50' or tag 'annual50') exists
+      final offers = product.productDetails.subscriptionOfferDetails;
+      String? selectedOfferToken;
+
+      if (offers != null && offers.isNotEmpty) {
+        final matchingOffer = offers.firstWhereOrNull(
+          (offer) =>
+              offer.offerId == 'annual-discount-50' ||
+              offer.offerTags.contains('annual50'),
+        );
+
+        // If specific discount offer is found, pass its token; otherwise fallback to primary offer token
+        selectedOfferToken = matchingOffer?.offerIdToken ?? product.offerToken ?? offers.first.offerIdToken;
+      }
+
+      purchaseParam = GooglePlayPurchaseParam(
+        productDetails: product,
+        offerToken: selectedOfferToken,
+      );
+    } else {
+      purchaseParam = PurchaseParam(productDetails: product);
+    }
+
     try {
       await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (e) {
@@ -295,12 +323,24 @@ class _PremiumScreenState extends State<PremiumScreen> {
     // Attempt to read prices from queried App Store product data, fallback to defaults
     String monthlyPrice = '£11.99/month';
     String annualPrice = '£115.99/year';
+    String annualBadge = 'BEST VALUE - SAVE 19%';
     
     for (var prod in _products) {
       if (prod.id == 'com.herwellnessapp.monthly') {
         monthlyPrice = '${prod.price}/month';
       } else if (prod.id == 'com.herwellnessapp.annual') {
         annualPrice = '${prod.price}/year';
+        if (!kIsWeb && Platform.isAndroid && prod is GooglePlayProductDetails) {
+          final offers = prod.productDetails.subscriptionOfferDetails;
+          final discountOffer = offers?.firstWhereOrNull(
+            (o) => o.offerId == 'annual-discount-50' || o.offerTags.contains('annual50'),
+          );
+          if (discountOffer != null && discountOffer.pricingPhases.isNotEmpty) {
+            final promoPrice = discountOffer.pricingPhases.first.formattedPrice;
+            annualPrice = '$promoPrice/year';
+            annualBadge = 'SPECIAL OFFER - 50% OFF';
+          }
+        }
       }
     }
 
@@ -388,7 +428,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   duration: '1 Year',
                   price: annualPrice,
                   subtitle: '7-Day Free Trial included · Renews yearly',
-                  badge: 'BEST VALUE - SAVE 19%',
+                  badge: annualBadge,
                   highlighted: true,
                 ),
                 const SizedBox(height: 28),
